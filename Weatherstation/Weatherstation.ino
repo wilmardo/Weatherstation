@@ -34,7 +34,7 @@ server is the ipaddress of the Domoticz server
 byte MAC[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };    
 const IPAddress PROGMEM IP(192,168,1,15);
 const IPAddress PROGMEM SERVER(192,168,1,215);
-EthernetClient PROGMEM CLIENT;
+EthernetClient CLIENT;
 
 /* IDX's of the domoticz devices
 IDX_THB is "Temp + Humidity + Baro" dummydevice 
@@ -67,8 +67,9 @@ void setup()
 		while(1); // Pause forever.
 	}
 
+  Serial.println(byteToChar(IDX_THB));
 	Serial.println("Startup succesfull");
-	//sendLog("Startup succesfull");
+	sendLog("Startup succesfull");
 }
 
 /* Function to convert float to char */ 
@@ -85,11 +86,11 @@ char* byteToChar(byte input) {
 	return output;
 }
 
-void ipAddressToChar(IPAddress ip, char combined[]) {
-	byte first_octet = ip[0];
-	byte second_octet = ip[1];
-	byte third_octet = ip[2];
-	byte fourth_octet = ip[3];
+void ipAddressToChar(char *combined) {
+	byte first_octet = IP[0];
+	byte second_octet = IP[1];
+	byte third_octet = IP[2];
+	byte fourth_octet = IP[3];
   
 	strcat(combined, byteToChar(first_octet));
 	strcat(combined, byteToChar(second_octet));
@@ -100,22 +101,17 @@ void ipAddressToChar(IPAddress ip, char combined[]) {
 /* Function to Encode URL to RFC3968 standard
 http://hardwarefun.com/tutorials/url-encoding-in-arduino
 */
-char* urlEncode(char *input)
+void urlEncode(char *encodedMsg)
 {
 	char msg;
 	const char *hex = "0123456789abcdef";
-	char encodedMsg[MESSAGE_MAX];
 	int count;
 
 	while( (msg = getchar()) != EOF ){
 		if( ('a' <= msg && msg <= 'z') || ('A' <= msg && msg <= 'Z') || ('0' <= msg && msg <= '9') ) {
-	//            encodedMsg = encodedMsg + *msg;
 			encodedMsg[count] = msg;
 			count++;
 		} else {
-	//            encodedMsg += '%';
-	//            encodedMsg += hex[*msg >> 4];
-	//            encodedMsg += hex[*msg & 15];
 			encodedMsg[count] = '%';
 			count++;
 			encodedMsg[count] = hex[msg >> 4];
@@ -124,25 +120,27 @@ char* urlEncode(char *input)
 			count++;
 			}
 	}
-	return encodedMsg;
 }
 
 /* Function to send the data to Domoticz */
 void sendData(char* url) {
 	char ipAddressArray[15];
-	ipAddressToChar(IP, ipAddressArray);
+	ipAddressToChar(ipAddressArray);
+
+  char encodedMsg[MESSAGE_MAX];
+  urlEncode(encodedMsg);
 
 	if (CLIENT.connect(SERVER, 8080)) {
 		// Make a HTTP request:
-		CLIENT.print(urlEncode(url));
-		CLIENT.print(" HTTP/1.1\r\n");
-		CLIENT.print("Host: ");
+		CLIENT.print(encodedMsg);
+		CLIENT.print(F(" HTTP/1.1\r\n"));
+		CLIENT.print(F("Host: "));
 		CLIENT.print(ipAddressArray);
-		CLIENT.print("\r\n");
-		CLIENT.print("Accept: */*\r\n");
-		CLIENT.print("User-Agent: Mozilla/4.0 (compatible; esp8266 Lua; Windows NT 5.1)\r\n");
-		CLIENT.print("\r\n");
-		Serial.println("Data send succesfully");
+		CLIENT.print(F("\r\n"));
+		CLIENT.print(F("Accept: */*\r\n"));
+		CLIENT.print(F("User-Agent: Mozilla/4.0 (compatible; esp8266 Lua; Windows NT 5.1)\r\n"));
+		CLIENT.print(F("\r\n"));
+		Serial.println(F("Data send succesfully"));
 	} else {
 		// if you didn't get a connection to the server:
 		Serial.println("Connection to server failed");
@@ -194,7 +192,7 @@ void sendTHBData() {
 
 /* Function to add message to the Domoticz log */
 void sendLog(char* message) {
-	char* url = "GET /json.htm?type=command&param=addlogmessage&message=Weatherstation: ";
+	char *url = "GET /json.htm?type=command&param=addlogmessage&message=Weatherstation: ";
 	char combined[MESSAGE_MAX];
   
 	strcat(combined, url);
@@ -205,7 +203,7 @@ void sendLog(char* message) {
 /* Function to sleep Arduino for SLEEPTIME ammount */
 void sleepNow() {
 	unsigned long startMillis = millis();
-	Serial.println("Going to sleep. Zzzzzz");
+	Serial.println(F("Going to sleep. Zzzzzz"));
 	while (millis() - startMillis < SLEEPTIME);
 }
 
@@ -235,25 +233,25 @@ boolean readDHT22() {
 		humidity = myDHT22.getHumidityInt() / 10;
 		return true;
 	case DHT_ERROR_CHECKSUM:
-		//Serial.println("check sum error);
+		//Serial.println(F("check sum error));
 		return false;
 	case DHT_BUS_HUNG:
-		//Serial.println("BUS Hung);
+		//Serial.println(F("BUS Hung));
 		return false;
 	case DHT_ERROR_NOT_PRESENT:
-		//Serial.println("Not Present);
+		//Serial.println(F("Not Present));
 		return false;
 	case DHT_ERROR_ACK_TOO_LONG:
-		//Serial.println("ACK time out);
+		//Serial.println(F("ACK time out));
 		return false;
 	case DHT_ERROR_SYNC_TIMEOUT:
-		//Serial.println("Sync Timeout);
+		//Serial.println(F("Sync Timeout));
 		return false;
 	case DHT_ERROR_DATA_TIMEOUT:
-		//Serial.println("Data Timeout);
+		//Serial.println(F("Data Timeout));
 		return false;
 	case DHT_ERROR_TOOQUICK:
-		//Serial.println("Polled to quick");
+		//Serial.println(F("Polled to quick"));
 		return false;
 	}
 }  
@@ -304,19 +302,19 @@ boolean readBMP180() {
 		if (status != 0){
 			return true;
 		} else {
-			//Serial.println("error retrieving pressure measurement\n");
+			//Serial.println(F("error retrieving pressure measurement\n"));
 			return false;
 			}
 		} else {
-		//Serial.println("error starting pressure measurement\n");
+		//Serial.println(F("error starting pressure measurement\n"));
 		return false;
 		}
 	} else {
-		//Serial.println("error retrieving temperature measurement\n");
+		//Serial.println(F("error retrieving temperature measurement\n"));
 		return false;
 		}
 	} else {
-	//Serial.println("error starting temperature measurement\n");
+	//Serial.println(F("error starting temperature measurement\n"));
 	return false;
 	}
 }
@@ -327,11 +325,11 @@ void loop()
 		if(readBMP180()) {     
 			sendTHBData();
 		} else {
-			Serial.println("Error reading BMP180");
+			Serial.println(F("Error reading BMP180"));
 			sendLog("Error reading BMP180");
 		}
 	} else {
-		Serial.println("Error reading DHT22");
+		Serial.println(F("Error reading DHT22"));
 		sendLog("Error reading DHT22");
 	}
 
