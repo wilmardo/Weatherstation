@@ -13,6 +13,7 @@ DHT22:
 PIN is set by the DHT22_PIN variable. In this example pin 7
 */
 
+#include <PString.h>
 #include <SPI.h>
 #include <Ethernet.h>
 #include <SFE_BMP180.h>
